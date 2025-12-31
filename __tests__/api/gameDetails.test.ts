@@ -4,6 +4,8 @@ import { createMockRequest, parseResponse } from '../setup/testHelpers'
 
 describe('GET /api/games/:gameId', () => {
   beforeEach(async () => {
+    jest.clearAllMocks()
+    jest.resetModules()
     await setupTestDb()
   })
 
@@ -55,6 +57,8 @@ describe('GET /api/games/:gameId', () => {
 
 describe('PATCH /api/games/:gameId', () => {
   beforeEach(async () => {
+    jest.clearAllMocks()
+    jest.resetModules()
     await setupTestDb()
   })
 
@@ -100,6 +104,8 @@ describe('PATCH /api/games/:gameId', () => {
 
 describe('DELETE /api/games/:gameId', () => {
   beforeEach(async () => {
+    jest.clearAllMocks()
+    jest.resetModules()
     await setupTestDb()
   })
 
