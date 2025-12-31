@@ -154,14 +154,6 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
     }
   };
 
-  const moveToNextPlayer = () => {
-    let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    while (players[nextPlayerIndex].folded && nextPlayerIndex !== currentPlayerIndex) {
-      nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
-    }
-    setCurrentPlayerIndex(nextPlayerIndex);
-  };
-
   const addToLog = (
     action: string,
     type: LogEntry['type'],
