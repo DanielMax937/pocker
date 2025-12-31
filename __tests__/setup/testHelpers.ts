@@ -7,7 +7,7 @@ export function createMockRequest(
     body?: unknown
     headers?: Record<string, string>
   } = {}
-): NextRequest {
+): Request {
   const { method = 'GET', body, headers = {} } = options
 
   const requestInit: RequestInit = {
@@ -22,7 +22,7 @@ export function createMockRequest(
     requestInit.body = JSON.stringify(body)
   }
 
-  return new NextRequest(new URL(url, 'http://localhost:3000'), requestInit)
+  return new Request(new URL(url, 'http://localhost:3000'), requestInit)
 }
 
 export async function parseResponse(response: Response) {
