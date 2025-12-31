@@ -1,6 +1,20 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 
+interface GameAction {
+  player: {
+    name: string;
+  };
+  actionType: string;
+  amount?: number;
+}
+
+interface GameStatePlayer {
+  name: string;
+  chips: number;
+  folded?: boolean;
+}
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL
@@ -16,7 +30,7 @@ export async function POST(request: Request) {
             const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/games/${gameId}/actions?gameId=${gameId}`);
             if (response.ok) {
                 const actions = await response.json();
-                gameHistory = actions.map((action: any, index: number) => {
+                gameHistory = actions.map((action: GameAction, index: number) => {
                     return `${index + 1}. ${action.player.name} ${action.actionType}${action.amount ? ` $${action.amount}` : ''}`
                 }).join('\n');
             }
@@ -30,7 +44,7 @@ Current game state:
 - Current bet: $${gameState.currentBet}
 - Community cards: ${gameState.communityCards.join(', ')}
 - Players:
-${gameState.players.map((p: any) => `  * ${p.name}: ${p.chips} chips${p.folded ? ' (folded)' : ''}`).join('\n')}
+${gameState.players.map((p: GameStatePlayer) => `  * ${p.name}: ${p.chips} chips${p.folded ? ' (folded)' : ''}`).join('\n')}
 ` : '';
 
         // Simple validation
