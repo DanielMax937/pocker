@@ -51,7 +51,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   // Game state
   const [isGameActive, setIsGameActive] = useState(false);
   const [players, setPlayers] = useState<PlayerState[]>([]);
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [currentPlayerIndex] = useState(0);
   const [dealerIndex] = useState(0);
   const [communityCards, setCommunityCards] = useState<string[]>([]);
   const [pot, setPot] = useState(0);
