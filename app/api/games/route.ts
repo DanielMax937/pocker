@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface PlayerCreateData {
+  playerId: string;
+  name: string;
+  position: number;
+  startingChips: number;
+}
+
 export async function GET() {
   try {
     const games = await prisma.game.findMany({
@@ -37,7 +44,7 @@ export async function POST(request: Request) {
       data: {
         status: 'active',
         players: {
-          create: players.map((player: any) => ({
+          create: players.map((player: PlayerCreateData) => ({
             playerId: player.playerId,
             name: player.name,
             position: player.position,

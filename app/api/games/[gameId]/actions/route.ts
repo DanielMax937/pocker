@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface PlayerInfo {
+  id: string;
+  name: string;
+  position?: number;
+  chips: number;
+}
+
+interface GameStateWithPlayers {
+  players: PlayerInfo[];
+}
+
 // Get all actions for a game
 export async function GET(
   request: Request,
@@ -49,7 +60,7 @@ export async function POST(
 
     // If player doesn't exist, create them
     if (!player) {
-      const playerInfo = gameState.players.find((p: any) => p.id === playerId);
+      const playerInfo = (gameState as GameStateWithPlayers).players.find((p: PlayerInfo) => p.id === playerId);
       if (!playerInfo) {
         return NextResponse.json(
           { error: 'Player information not found in game state' },

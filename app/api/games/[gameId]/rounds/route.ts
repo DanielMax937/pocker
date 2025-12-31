@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface GameAction {
+  gameState: unknown;
+}
+
+interface Round {
+  phase: string;
+  actions: GameAction[];
+  pot: number;
+  communityCards: string[];
+}
+
+interface GameStateData {
+  gamePhase: string;
+  pot: number;
+  communityCards: string[];
+}
+
 export async function GET(
   request: Request,
 ) {
@@ -31,8 +48,8 @@ export async function GET(
     }
 
     // Group actions by round (based on game state)
-    const rounds = game.actions.reduce((acc: any[], action) => {
-      const gameState = action.gameState as any;
+    const rounds = game.actions.reduce((acc: Round[], action) => {
+      const gameState = action.gameState as GameStateData;
       const lastRound = acc[acc.length - 1];
       
       if (!lastRound || lastRound.phase !== gameState.gamePhase) {

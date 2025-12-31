@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { analyzePlayerAction } from '@/app/lib/action-analyzer';
 import prisma from '@/app/lib/prisma';
 
+interface GameActionRecord {
+  player: {
+    name: string;
+  };
+  actionType: string;
+  amount?: number;
+}
+
 export async function POST(
     request: Request,
     { params }: { params: { gameId: string } }
@@ -17,7 +25,7 @@ export async function POST(
         // Fetch game history
         const historyResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/games/${gameId}/actions?gameId=${gameId}`);
         const actions = await historyResponse.json();
-        const gameHistory = actions.map((action: any, index: number) => 
+        const gameHistory = actions.map((action: GameActionRecord, index: number) => 
             `${index + 1}. ${action.player.name} ${action.actionType}${action.amount ? ` $${action.amount}` : ''}`
         );
 
