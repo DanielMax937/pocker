@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card as CardType } from '../lib/poker';
 import Card from './Card';
-import { calculateWinProbability, getHandStrength } from '../lib/poker-probability';
+import { calculateWinProbability } from '../lib/poker-probability';
 
 interface GameState {
   players: Array<{
@@ -53,7 +53,7 @@ const ActionReplay: React.FC<ActionReplayProps> = ({ gameId, onClose }) => {
         const data = await response.json();
         setActions(data);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError('Failed to load game actions');
         setLoading(false);
       }

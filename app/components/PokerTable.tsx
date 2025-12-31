@@ -56,7 +56,6 @@ const PokerTable: React.FC<PokerTableProps> = ({
     return sortedPlayers.map((player, index) => {
       if (index >= positions.length) return null; // Safety check
       
-      const isUserTurn = index === players.findIndex(p => p.id === players[currentPlayerIndex]?.id);
       const isUser = player.id === userId;
       const isDealer = players.indexOf(player) === dealerIndex;
       

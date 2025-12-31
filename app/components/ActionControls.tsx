@@ -21,7 +21,6 @@ const ActionControls: React.FC<ActionControlsProps> = ({
   playerContribution,
   isPlayerTurn,
   canCheck,
-  canRaise,
   onFold,
   onCheck,
   onCall,

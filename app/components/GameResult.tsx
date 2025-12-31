@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Card from './Card';
 import { PlayerInfo } from './Player';
 import { Card as CardType } from '../lib/poker';
 import ActionReplay from './ActionReplay';
@@ -20,9 +19,7 @@ interface GameResultProps {
 const GameResult: React.FC<GameResultProps> = ({
   winner,
   handDescription,
-  handRank,
   pot,
-  bestHand,
   isUser,
   onPlayAgain,
   onReview,

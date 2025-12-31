@@ -1,11 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PokerTable from './PokerTable';
 import PlayerStatusBar from './PlayerStatusBar';
 import GameLog from './GameLog';
-import { generateDeck, dealCards, dealCommunityCards } from '../lib/poker';
-import { makeAIDecision, createAIPersonality, AILevel } from '../lib/ai-player';
-import { calculateWinProbability } from '../lib/poker-probability';
-import { Card } from '../lib/types';
+import { generateDeck, dealCards } from '../lib/poker';
 
 type GamePhase = 'pre-flop' | 'flop' | 'turn' | 'river' | 'showdown';
 
@@ -55,36 +52,25 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   const [isGameActive, setIsGameActive] = useState(false);
   const [players, setPlayers] = useState<PlayerState[]>([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
-  const [dealerIndex, setDealerIndex] = useState(0);
-  const [deck, setDeck] = useState<string[]>([]);
+  const [dealerIndex] = useState(0);
   const [communityCards, setCommunityCards] = useState<string[]>([]);
   const [pot, setPot] = useState(0);
-  const [currentBet, setCurrentBet] = useState(0);
   const [phase, setPhase] = useState<GamePhase>('pre-flop');
-  const [showdown, setShowdown] = useState(false);
-  const [winnerInfo, setWinnerInfo] = useState<WinnerInfo | null>(null);
+  const [showdown] = useState(false);
+  const [winnerInfo] = useState<WinnerInfo | null>(null);
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
   const [isLogVisible, setIsLogVisible] = useState(true);
   const [gameActions, setGameActions] = useState<GameAction[]>([]);
   const [currentActionIndex, setCurrentActionIndex] = useState(0);
-  const [playerContributions, setPlayerContributions] = useState<Record<string, number>>({});
+  const [playerContributions] = useState<Record<string, number>>({});
   
   // User info
   const [userId] = useState('user-1');
   
-  // AI state
-  const isAIActing = useRef(false);
-  
   // Game ID state
   const [gameId, setGameId] = useState<string | null>(initialGameId || null);
 
-  useEffect(() => {
-    if (isReviewMode && gameId) {
-      loadGameHistory();
-    }
-  }, [isReviewMode, gameId]);
-
-  const loadGameHistory = async () => {
+  const loadGameHistory = useCallback(async () => {
     try {
       const response = await fetch(`/api/games/${gameId}?gameId=${gameId}`);
       const gameData = await response.json();
@@ -102,7 +88,13 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
     } catch (error) {
       console.error('Error loading game history:', error);
     }
-  };
+  }, [gameId]);
+
+  useEffect(() => {
+    if (isReviewMode && gameId) {
+      loadGameHistory();
+    }
+  }, [isReviewMode, gameId, loadGameHistory]);
 
   const startGame = async () => {
     // Initialize a new game
@@ -162,54 +154,6 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
     }
   };
 
-  const handlePlayerAction = async (action: string, amount?: number) => {
-    if (!isGameActive || !gameId) return;
-
-    const currentPlayer = players[currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.folded) return;
-
-    try {
-      // Store the action in the database
-      const response = await fetch(`/api/games/${gameId}/actions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          playerId: currentPlayer.id,
-          type: action,
-          amount,
-          sequence: gameActions.length,
-          gameId
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to store action');
-      }
-
-      // Update game state based on action
-      const updatedPlayers = [...players];
-      switch (action) {
-        case 'fold':
-          updatedPlayers[currentPlayerIndex].folded = true;
-          addToLog(`${currentPlayer.name} folds`, 'action', currentPlayer.id, currentPlayer.name);
-          break;
-        case 'call':
-          // Handle call action
-          break;
-        case 'raise':
-          // Handle raise action
-          break;
-      }
-
-      setPlayers(updatedPlayers);
-      moveToNextPlayer();
-    } catch (error) {
-      console.error('Error handling player action:', error);
-    }
-  };
-
   const moveToNextPlayer = () => {
     let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
     while (players[nextPlayerIndex].folded && nextPlayerIndex !== currentPlayerIndex) {
@@ -254,7 +198,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
 
   const calculateGameStateAtAction = (actionIndex: number) => {
     // Calculate game state after applying all actions up to actionIndex
-    const relevantActions = gameActions.slice(0, actionIndex);
+    gameActions.slice(0, actionIndex);
     // ... implement state calculation based on actions
     return {
       players: [] as PlayerState[],
@@ -310,7 +254,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   return (
     <div className="flex flex-col min-h-screen bg-gray-900">
       <header className="bg-gray-800 p-4 text-white flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Texas Hold'em Poker</h1>
+        <h1 className="text-2xl font-bold">Texas Hold&apos;em Poker</h1>
         <div className="flex gap-4">
           {isReviewMode && (
             <div className="flex gap-2">

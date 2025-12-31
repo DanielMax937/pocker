@@ -13,7 +13,6 @@ interface PlayerStatusProps {
 }
 
 const PlayerStatus: React.FC<PlayerStatusProps> = ({
-  playerId,
   playerName,
   isCurrentTurn,
   lastAction,

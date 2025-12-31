@@ -15,9 +15,6 @@ const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   dealerIndex,
   playerContributions
 }) => {
-  // Only show active players (not folded)
-  const activePlayers = players.filter(p => !p.folded);
-
   return (
     <div className="fixed left-0 top-0 w-72 h-full pointer-events-none">
       <div className="relative w-full h-full">
