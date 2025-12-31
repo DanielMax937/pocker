@@ -96,6 +96,36 @@ The database includes the following models:
 - **PlayerHand**: Player's pocket cards
 - **Action**: Betting actions with amounts
 
+## Testing
+
+This project includes comprehensive API test coverage using Jest.
+
+### Run Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Generate coverage report
+pnpm test:coverage
+```
+
+### Test Coverage
+
+**37 test cases** covering all 14 API endpoints:
+
+- ✅ **Games API** (5 tests): Create, list, and manage games
+- ✅ **Game Details API** (7 tests): Get, update, and delete specific games
+- ✅ **Game Actions API** (7 tests): Create and retrieve game actions with auto-sequencing
+- ✅ **Game Rounds API** (6 tests): Group actions by game phase
+- ✅ **Human Player API** (4 tests): Process human actions with AI analysis
+- ✅ **AI Decision API** (8 tests): Get AI recommendations for poker decisions
+
+All tests use an in-memory SQLite database for fast, isolated testing.
+
 ## Development
 
 ### Generate Prisma Client
