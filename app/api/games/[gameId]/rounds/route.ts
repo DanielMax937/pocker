@@ -49,9 +49,9 @@ export async function GET(
 
     // Group actions by round (based on game state)
     const rounds = game.actions.reduce((acc: Round[], action) => {
-      const gameState = action.gameState as GameStateData;
+      const gameState = action.gameState as unknown as GameStateData;
       const lastRound = acc[acc.length - 1];
-      
+
       if (!lastRound || lastRound.phase !== gameState.gamePhase) {
         acc.push({
           phase: gameState.gamePhase,
@@ -64,7 +64,7 @@ export async function GET(
         lastRound.pot = gameState.pot;
         lastRound.communityCards = gameState.communityCards;
       }
-      
+
       return acc;
     }, []);
 

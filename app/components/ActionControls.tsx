@@ -29,16 +29,16 @@ const ActionControls: React.FC<ActionControlsProps> = ({
   onAllIn,
 }) => {
   const [betAmount, setBetAmount] = useState<number>(currentBet > 0 ? currentBet * 2 : 20);
-  
+
   // Calculate how much the player needs to call
   const amountToCall = currentBet - playerContribution;
-  
+
   // Determine if player can afford calling
   const canAffordCall = playerChips >= amountToCall;
-  
+
   // Determine minimum bet/raise (double the current bet or 20 if no bet)
   const minimumBet = currentBet > 0 ? currentBet * 2 : 20;
-  
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBetAmount(parseInt(e.target.value));
   };
@@ -52,15 +52,15 @@ const ActionControls: React.FC<ActionControlsProps> = ({
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg text-white">
-      <div className="grid grid-cols-3 gap-2 mb-4">
+    <div className="bg-gray-800 p-3 sm:p-4 rounded-lg text-white">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <button
           className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
           onClick={onFold}
         >
           Fold
         </button>
-        
+
         {canCheck ? (
           <button
             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
@@ -77,7 +77,7 @@ const ActionControls: React.FC<ActionControlsProps> = ({
             Call ${amountToCall}
           </button>
         )}
-        
+
         {currentBet === 0 ? (
           <button
             className={`bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded ${betAmount > playerChips ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -96,7 +96,7 @@ const ActionControls: React.FC<ActionControlsProps> = ({
           </button>
         )}
       </div>
-      
+
       <div className="mb-4">
         <label className="block text-sm mb-1">
           {currentBet === 0 ? 'Bet Amount' : 'Raise Amount'}
@@ -115,7 +115,7 @@ const ActionControls: React.FC<ActionControlsProps> = ({
           <span>${playerChips}</span>
         </div>
       </div>
-      
+
       <button
         className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded"
         onClick={onAllIn}

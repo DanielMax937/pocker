@@ -3,6 +3,7 @@ import PokerTable from './PokerTable';
 import PlayerStatusBar from './PlayerStatusBar';
 import GameLog from './GameLog';
 import { generateDeck, dealCards } from '../lib/poker';
+import { AILevel } from '../lib/ai-player';
 
 type GamePhase = 'pre-flop' | 'flop' | 'turn' | 'river' | 'showdown';
 
@@ -55,6 +56,8 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   const [dealerIndex] = useState(0);
   const [communityCards, setCommunityCards] = useState<string[]>([]);
   const [pot, setPot] = useState(0);
+  const [currentBet, setCurrentBet] = useState(0);
+  const [deck, setDeck] = useState<string[]>([]);
   const [phase, setPhase] = useState<GamePhase>('pre-flop');
   const [showdown] = useState(false);
   const [winnerInfo] = useState<WinnerInfo | null>(null);
@@ -63,10 +66,10 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   const [gameActions, setGameActions] = useState<GameAction[]>([]);
   const [currentActionIndex, setCurrentActionIndex] = useState(0);
   const [playerContributions] = useState<Record<string, number>>({});
-  
+
   // User info
   const [userId] = useState('user-1');
-  
+
   // Game ID state
   const [gameId, setGameId] = useState<string | null>(initialGameId || null);
 
@@ -74,14 +77,14 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
     try {
       const response = await fetch(`/api/games/${gameId}?gameId=${gameId}`);
       const gameData = await response.json();
-      
+
       // Set initial game state
       setPlayers(gameData.players);
       setCommunityCards(gameData.communityCards || []);
       setPot(gameData.pot || 0);
       setCurrentBet(gameData.currentBet || 0);
       setPhase(gameData.phase || 'pre-flop');
-      
+
       // Load all actions
       setGameActions(gameData.actions);
       setCurrentActionIndex(0);
@@ -98,7 +101,6 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
 
   const startGame = async () => {
     // Initialize a new game
-    const newDeck = generateDeck();
     const initialPlayers: PlayerState[] = [
       {
         id: userId,
@@ -137,8 +139,8 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
       const gameData = await response.json();
       setGameId(gameData.id);
 
-      // Deal initial cards
-      const { remainingDeck, playerCards } = dealCards(newDeck, 2);
+      // Deal initial cards - dealCards(numPlayers, cardsPerPlayer)
+      const { remainingDeck, playerCards } = dealCards(initialPlayers.length, 2);
       const playersWithCards = initialPlayers.map((player, index) => ({
         ...player,
         cards: playerCards[index]
@@ -171,7 +173,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
 
   const replayNextAction = () => {
     if (currentActionIndex >= gameActions.length) return;
-    
+
     const action = gameActions[currentActionIndex];
     applyAction(action);
     setCurrentActionIndex(prev => prev + 1);
@@ -179,7 +181,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
 
   const replayPreviousAction = () => {
     if (currentActionIndex <= 0) return;
-    
+
     setCurrentActionIndex(prev => prev - 1);
     // Reset game state to previous action
     if (currentActionIndex > 0) {
@@ -212,7 +214,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   const applyAction = (action: GameAction) => {
     const updatedPlayers = [...players];
     const playerIndex = players.findIndex(p => p.id === action.playerId);
-    
+
     if (playerIndex === -1) return;
     const player = players[playerIndex];
 
@@ -223,19 +225,21 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
         break;
       case 'call':
         if (typeof action.amount === 'number') {
-          updatedPlayers[playerIndex].chips -= action.amount;
-          updatedPlayers[playerIndex].currentBet += action.amount;
-          setPot(prev => prev + action.amount);
-          addToLog(`calls ${action.amount}`, 'action', player.id, player.name);
+          const amount = action.amount;
+          updatedPlayers[playerIndex].chips -= amount;
+          updatedPlayers[playerIndex].currentBet += amount;
+          setPot(prev => prev + amount);
+          addToLog(`calls ${amount}`, 'action', player.id, player.name);
         }
         break;
       case 'raise':
         if (typeof action.amount === 'number') {
-          updatedPlayers[playerIndex].chips -= action.amount;
-          updatedPlayers[playerIndex].currentBet += action.amount;
-          setPot(prev => prev + action.amount);
-          setCurrentBet(action.amount);
-          addToLog(`raises to ${action.amount}`, 'action', player.id, player.name);
+          const amount = action.amount;
+          updatedPlayers[playerIndex].chips -= amount;
+          updatedPlayers[playerIndex].currentBet += amount;
+          setPot(prev => prev + amount);
+          setCurrentBet(amount);
+          addToLog(`raises to ${amount}`, 'action', player.id, player.name);
         }
         break;
     }
@@ -266,7 +270,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
               </button>
             </div>
           )}
-          <button 
+          <button
             onClick={() => setIsLogVisible(!isLogVisible)}
             className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
           >
@@ -274,7 +278,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
           </button>
         </div>
       </header>
-      
+
       <main className="flex-grow flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl">
           {!isReviewMode && !isGameActive && !winnerInfo && (
@@ -287,7 +291,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
               </button>
             </div>
           )}
-          
+
           <PokerTable
             players={players.map(p => ({
               id: p.id,
@@ -306,7 +310,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
             userId={userId}
             showdown={showdown}
           />
-          
+
           {isLogVisible && (
             <GameLog
               logs={gameLogs}
@@ -316,7 +320,7 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
           )}
         </div>
       </main>
-      
+
       <PlayerStatusBar
         players={players.map(p => ({
           id: p.id,

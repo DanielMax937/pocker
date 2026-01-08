@@ -14,23 +14,26 @@ datasource db {
 }
 
 model Game {
-  id          String    @id @default(cuid())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  status      String    @default("active") // active, completed
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  status      String       @default("active") // active, completed
   players     GamePlayer[]
   actions     GameAction[]
+  rounds      Round[]
+  playerHands PlayerHand[]
 }
 
 model GamePlayer {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
   gameId        String
-  game          Game     @relation(fields: [gameId], references: [id])
+  game          Game         @relation(fields: [gameId], references: [id])
   playerId      String   // can be 'user-1' for human or 'ai-1' for AI
   name          String
   position      Int      // player's position at the table
   startingChips Int
   actions       GameAction[]
+  hands         PlayerHand[]
   
   @@index([gameId])
 }
@@ -49,4 +52,39 @@ model GameAction {
   gameState      Json       // snapshot of game state at this action
   @@index([gameId])
   @@index([playerId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  chips     Int      @default(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Round {
+  id             String   @id @default(cuid())
+  gameId         String
+  game           Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  phase          String
+  pot            Int
+  communityCards String
+  createdAt      DateTime @default(now())
+
+  @@index([gameId])
+}
+
+model PlayerHand {
+  id        String     @id @default(cuid())
+  playerId  String
+  player    GamePlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  gameId    String
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  cards     String
+  createdAt DateTime   @default(now())
+
+  @@index([playerId])
+  @@index([gameId])
 }

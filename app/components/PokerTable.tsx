@@ -55,22 +55,22 @@ const PokerTable: React.FC<PokerTableProps> = ({
 
     return sortedPlayers.map((player, index) => {
       if (index >= positions.length) return null; // Safety check
-      
+
       const isUser = player.id === userId;
       const isDealer = players.indexOf(player) === dealerIndex;
-      
+
       return (
-        <div 
-          key={player.id} 
-          className="absolute" 
+        <div
+          key={player.id}
+          className="absolute"
           style={positions[index]}
         >
-          <Player 
+          <Player
             player={{
               ...player,
               isCurrentTurn: currentPlayerIndex === players.indexOf(player),
               isDealer
-            }} 
+            }}
             showCards={showdown || isUser}
             isUser={isUser}
           />
@@ -88,7 +88,7 @@ const PokerTable: React.FC<PokerTableProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[500px] bg-green-800 rounded-full border-8 border-brown-900 overflow-hidden">
+    <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px] bg-green-800 rounded-3xl sm:rounded-full border-4 sm:border-8 border-brown-900 overflow-hidden">
       {/* Center area with community cards and pot */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
         <div className="bg-green-900 p-3 rounded-lg mb-2">
@@ -101,16 +101,16 @@ const PokerTable: React.FC<PokerTableProps> = ({
             )}
           </div>
         </div>
-        
-        <div className="bg-black bg-opacity-40 px-4 py-2 rounded-lg">
-          <div className="text-yellow-300 font-bold text-xl">${pot}</div>
+
+        <div className="bg-black bg-opacity-40 px-3 sm:px-4 py-1 sm:py-2 rounded-lg">
+          <div className="text-yellow-300 font-bold text-lg sm:text-xl">${pot}</div>
         </div>
-        
+
         <div className="mt-2 bg-blue-900 text-white px-3 py-1 rounded-lg text-sm">
           {gamePhase || "Waiting to start"}
         </div>
       </div>
-      
+
       {/* Players positioned around the table */}
       {renderPositions()}
     </div>

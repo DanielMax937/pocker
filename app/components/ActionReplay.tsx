@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card as CardType } from '../lib/poker';
 import Card from './Card';
 import { calculateWinProbability } from '../lib/poker-probability';
@@ -44,6 +44,8 @@ const ActionReplay: React.FC<ActionReplayProps> = ({ gameId, onClose }) => {
   const [currentActionIndex, setCurrentActionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [autoPlaySpeed, setAutoPlaySpeed] = useState(1500); // ms between actions
 
   useEffect(() => {
     const fetchActions = async () => {
@@ -65,16 +67,55 @@ const ActionReplay: React.FC<ActionReplayProps> = ({ gameId, onClose }) => {
   const currentAction = actions[currentActionIndex];
   const totalActions = actions.length;
 
-  const goToPreviousAction = () => {
+  const goToPreviousAction = useCallback(() => {
     if (currentActionIndex > 0) {
       setCurrentActionIndex(currentActionIndex - 1);
     }
-  };
+  }, [currentActionIndex]);
 
-  const goToNextAction = () => {
+  const goToNextAction = useCallback(() => {
     if (currentActionIndex < totalActions - 1) {
       setCurrentActionIndex(currentActionIndex + 1);
     }
+  }, [currentActionIndex, totalActions]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        goToPreviousAction();
+      } else if (e.key === 'ArrowRight') {
+        goToNextAction();
+      } else if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setIsAutoPlaying(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goToPreviousAction, goToNextAction, onClose]);
+
+  // Autoplay functionality
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+
+    if (currentActionIndex >= totalActions - 1) {
+      setIsAutoPlaying(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      goToNextAction();
+    }, autoPlaySpeed);
+
+    return () => clearTimeout(timer);
+  }, [isAutoPlaying, currentActionIndex, totalActions, autoPlaySpeed, goToNextAction]);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentActionIndex(parseInt(e.target.value, 10));
   };
 
   const renderCards = (cards: CardType[] | null | undefined) => {
@@ -150,41 +191,83 @@ const ActionReplay: React.FC<ActionReplayProps> = ({ gameId, onClose }) => {
     );
   }
 
-  console.log("current", currentAction)
-
   return (
-    <div className="inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-gray-800 p-8 pt-[200px] rounded-lg shadow-xl max-w-4xl w-full text-white">
-        <div className="flex justify-between items-center mb-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-4xl w-full text-white max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Action Replay</h2>
-          <div>
-            <button
-              onClick={goToPreviousAction}
-              disabled={currentActionIndex === 0}
-              className={`px-4 py-2 rounded mr-2 ${currentActionIndex === 0
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-            >
-              ← Previous
-            </button>
-            <button
-              onClick={goToNextAction}
-              disabled={currentActionIndex === totalActions - 1}
-              className={`px-4 py-2 rounded mr-2 ${currentActionIndex === totalActions - 1
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-            >
-              Next →
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl"
-            >
-              ✕
-            </button>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Progress Slider */}
+        {totalActions > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-4 mb-2">
+              <input
+                type="range"
+                min="0"
+                max={totalActions - 1}
+                value={currentActionIndex}
+                onChange={handleSliderChange}
+                className="flex-1 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              />
+              <span className="text-sm text-gray-400 whitespace-nowrap">
+                {currentActionIndex + 1} / {totalActions}
+              </span>
+            </div>
           </div>
+        )}
+
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            onClick={goToPreviousAction}
+            disabled={currentActionIndex === 0}
+            className={`px-4 py-2 rounded ${currentActionIndex === 0
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+          >
+            ← Prev
+          </button>
+          <button
+            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+            className={`px-4 py-2 rounded ${isAutoPlaying
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-green-600 hover:bg-green-700'
+              }`}
+          >
+            {isAutoPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+          <button
+            onClick={goToNextAction}
+            disabled={currentActionIndex === totalActions - 1}
+            className={`px-4 py-2 rounded ${currentActionIndex === totalActions - 1
+              ? 'bg-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+          >
+            Next →
+          </button>
+          <select
+            value={autoPlaySpeed}
+            onChange={(e) => setAutoPlaySpeed(parseInt(e.target.value, 10))}
+            className="bg-gray-700 text-white px-3 py-2 rounded"
+          >
+            <option value={500}>0.5s</option>
+            <option value={1000}>1s</option>
+            <option value={1500}>1.5s</option>
+            <option value={2000}>2s</option>
+            <option value={3000}>3s</option>
+          </select>
+          <span className="text-xs text-gray-500 ml-2">
+            Keys: ←→ navigate, Space play/pause, Esc close
+          </span>
         </div>
 
         {currentAction && (

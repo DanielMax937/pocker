@@ -41,31 +41,31 @@ export const HandRankDescriptions: Record<HandRank, string> = {
 // Generates a shuffled deck of cards
 export function generateDeck(): Card[] {
   const deck: Card[] = [];
-  
+
   // Create all possible cards
   for (const suit of SUITS) {
     for (const value of VALUES) {
       deck.push(`${value}${suit}` as Card);
     }
   }
-  
+
   // Shuffle the deck using Fisher-Yates algorithm
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  
+
   return deck;
 }
 
 // Deal cards to players
-export function dealCards(numPlayers: number, cardsPerPlayer: number = 2): { 
+export function dealCards(numPlayers: number, cardsPerPlayer: number = 2): {
   playerCards: Card[][],
   remainingDeck: Card[]
 } {
   const deck = generateDeck();
   const playerCards: Card[][] = [];
-  
+
   // Deal cards to each player
   for (let i = 0; i < numPlayers; i++) {
     const hand: Card[] = [];
@@ -74,7 +74,7 @@ export function dealCards(numPlayers: number, cardsPerPlayer: number = 2): {
     }
     playerCards.push(hand);
   }
-  
+
   return {
     playerCards,
     remainingDeck: deck
@@ -88,7 +88,7 @@ export function dealCommunityCards(deck: Card[], count: number): {
 } {
   const communityCards = deck.slice(0, count);
   const remainingDeck = deck.slice(count);
-  
+
   return {
     communityCards,
     remainingDeck
@@ -171,8 +171,8 @@ function checkStraightFlush(cards: ParsedCard[]): Card[] | null {
 function checkFourOfAKind(cards: ParsedCard[]): Card[] | null {
   for (let i = 0; i <= cards.length - 4; i++) {
     if (cards[i].value === cards[i + 1].value &&
-        cards[i].value === cards[i + 2].value &&
-        cards[i].value === cards[i + 3].value) {
+      cards[i].value === cards[i + 2].value &&
+      cards[i].value === cards[i + 3].value) {
       // Found four of a kind, add highest remaining card as kicker
       const kicker = cards.find(c => c.value !== cards[i].value);
       if (kicker) {
@@ -195,7 +195,7 @@ function checkFullHouse(cards: ParsedCard[]): Card[] | null {
 
   const threeValue = getCardValue(three[0].charAt(0));
   const remainingCards = cards.filter(c => c.value !== threeValue);
-  
+
   // Look for highest pair in remaining cards
   for (let i = 0; i < remainingCards.length - 1; i++) {
     if (remainingCards[i].value === remainingCards[i + 1].value) {
@@ -240,9 +240,9 @@ function checkStraight(cards: ParsedCard[]): Card[] | null {
 function checkStraightNormal(cards: ParsedCard[]): Card[] | null {
   for (let i = 0; i <= cards.length - 5; i++) {
     if (cards[i].value === cards[i + 1].value + 1 &&
-        cards[i + 1].value === cards[i + 2].value + 1 &&
-        cards[i + 2].value === cards[i + 3].value + 1 &&
-        cards[i + 3].value === cards[i + 4].value + 1) {
+      cards[i + 1].value === cards[i + 2].value + 1 &&
+      cards[i + 2].value === cards[i + 3].value + 1 &&
+      cards[i + 3].value === cards[i + 4].value + 1) {
       return [
         cards[i].originalCard,
         cards[i + 1].originalCard,
@@ -258,7 +258,7 @@ function checkStraightNormal(cards: ParsedCard[]): Card[] | null {
 function checkThreeOfAKind(cards: ParsedCard[]): Card[] | null {
   for (let i = 0; i <= cards.length - 3; i++) {
     if (cards[i].value === cards[i + 1].value &&
-        cards[i].value === cards[i + 2].value) {
+      cards[i].value === cards[i + 2].value) {
       // Found three of a kind, add two highest remaining cards as kickers
       const kickers = cards.filter(c => c.value !== cards[i].value).slice(0, 2);
       if (kickers.length === 2) {
@@ -283,8 +283,8 @@ function checkTwoPair(cards: ParsedCard[]): Card[] | null {
       for (let j = 0; j <= remainingCards.length - 2; j++) {
         if (remainingCards[j].value === remainingCards[j + 1].value) {
           // Found second pair, add highest remaining card as kicker
-          const kicker = cards.find(c => 
-            c.value !== cards[i].value && 
+          const kicker = cards.find(c =>
+            c.value !== cards[i].value &&
             c.value !== remainingCards[j].value
           );
           if (kicker) {
@@ -322,7 +322,7 @@ function checkOnePair(cards: ParsedCard[]): Card[] | null {
   return null;
 }
 
-export function evaluateHand(cards: Card[], numCards?: number): HandResult | null {
+export function evaluateHand(cards: Card[], _numCards?: number): HandResult | null {
   if (!cards || !Array.isArray(cards) || cards.length === 0) {
     return null;
   }
@@ -374,9 +374,10 @@ export function evaluateHand(cards: Card[], numCards?: number): HandResult | nul
 }
 
 // Get all possible n-length combinations from array
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getCombinations<T>(array: T[], n: number): T[][] {
   if (n === 1) return array.map(item => [item]);
-  
+
   const result: T[][] = [];
   for (let i = 0; i <= array.length - n; i++) {
     const head = array[i];
@@ -384,25 +385,26 @@ function getCombinations<T>(array: T[], n: number): T[][] {
       array.slice(i + 1),
       n - 1
     );
-    
+
     for (const tailCombo of tailCombinations) {
       result.push([head, ...tailCombo]);
     }
   }
-  
+
   return result;
 }
 
 // Evaluate a single 5-card hand
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function evaluateSingleHand(hand: Card[]): { rank: HandRank } {
   const parsedCards = hand.map(parseCard)
-    .sort((a, b) => getCardValue(b.charAt(0)) - getCardValue(a.charAt(0)));
-  
+    .sort((a, b) => b.value - a.value);
+
   // Check for flush (all same suit)
-  const isFlush = parsedCards.every(card => card.charAt(1) === parsedCards[0].charAt(1));
-  
+  const isFlush = parsedCards.every(card => card.suit === parsedCards[0].suit);
+
   // Check for straight (sequential values)
-  const values = parsedCards.map(card => getCardValue(card.charAt(0)));
+  const values = parsedCards.map(card => card.value);
   let isStraight = true;
   for (let i = 1; i < values.length; i++) {
     if (values[i - 1] !== values[i] + 1) {
@@ -410,79 +412,78 @@ function evaluateSingleHand(hand: Card[]): { rank: HandRank } {
       break;
     }
   }
-  
+
   // Special case for A-5 straight
   if (!isStraight && values[0] === 14) {
     const lowAceValues = [5, 4, 3, 2, 1];
     const aceValues = parsedCards.map(card => {
-      const value = getCardValue(card.charAt(0));
-      return value === 14 ? 1 : value;
+      return card.value === 14 ? 1 : card.value;
     }).sort((a, b) => b - a);
-    
+
     isStraight = aceValues.every((val, i) => val === lowAceValues[i]);
   }
-  
+
   // Check for royal flush
   if (isFlush && isStraight && values[0] === 14 && values[4] === 10) {
     return { rank: HandRank.RoyalFlush };
   }
-  
+
   // Check for straight flush
   if (isFlush && isStraight) {
     return { rank: HandRank.StraightFlush };
   }
-  
+
   // Count occurrences of each value
   const valueCounts = new Map<number, number>();
   for (const value of values) {
     valueCounts.set(value, (valueCounts.get(value) || 0) + 1);
   }
-  
+
   // Check for four of a kind
   if (Array.from(valueCounts.values()).includes(4)) {
     return { rank: HandRank.FourOfAKind };
   }
-  
+
   // Check for full house (three of a kind + pair)
-  if (Array.from(valueCounts.values()).includes(3) && 
-      Array.from(valueCounts.values()).includes(2)) {
+  if (Array.from(valueCounts.values()).includes(3) &&
+    Array.from(valueCounts.values()).includes(2)) {
     return { rank: HandRank.FullHouse };
   }
-  
+
   // Check for flush
   if (isFlush) {
     return { rank: HandRank.Flush };
   }
-  
+
   // Check for straight
   if (isStraight) {
     return { rank: HandRank.Straight };
   }
-  
+
   // Check for three of a kind
   if (Array.from(valueCounts.values()).includes(3)) {
     return { rank: HandRank.ThreeOfAKind };
   }
-  
+
   // Check for two pair
   if (Array.from(valueCounts.values()).filter(count => count === 2).length === 2) {
     return { rank: HandRank.TwoPair };
   }
-  
+
   // Check for pair
   if (Array.from(valueCounts.values()).includes(2)) {
     return { rank: HandRank.Pair };
   }
-  
+
   // Default to high card
   return { rank: HandRank.HighCard };
 }
 
 // Determine winning hand among multiple players
-export function determineWinner(playerHands: { 
-  userId: string, 
-  cards: Card[], 
-  folded: boolean 
+export function determineWinner(playerHands: {
+  userId: string,
+  cards: Card[],
+  folded: boolean
 }[], communityCards: Card[]): {
   winnerId: string,
   winningHand: {
@@ -493,49 +494,72 @@ export function determineWinner(playerHands: {
 } | null {
   // Filter out folded players
   const activePlayers = playerHands.filter(player => !player.folded);
-  
+
   if (activePlayers.length === 0) {
     return null;
   }
-  
+
   if (activePlayers.length === 1) {
     // Only one player left, they automatically win
     const winner = activePlayers[0];
+    // Combine player cards with community cards for evaluation
+    const allCards = [...winner.cards, ...communityCards];
+    const handResult = evaluateHand(allCards);
+    if (!handResult) return null;
     return {
       winnerId: winner.userId,
-      winningHand: evaluateHand(winner.cards, communityCards)
+      winningHand: {
+        rank: handResult.rank as HandRank,
+        description: handResult.description,
+        bestHand: handResult.bestHand
+      }
     };
   }
-  
+
   // Evaluate hands for all active players
-  const evaluatedHands = activePlayers.map(player => ({
-    userId: player.userId,
-    evaluation: evaluateHand(player.cards, communityCards)
-  }));
-  
+  const evaluatedHands = activePlayers.map(player => {
+    const allCards = [...player.cards, ...communityCards];
+    return {
+      userId: player.userId,
+      evaluation: evaluateHand(allCards)
+    };
+  }).filter(hand => hand.evaluation !== null);
+
+  if (evaluatedHands.length === 0) return null;
+
   // Sort by hand rank (highest first)
-  evaluatedHands.sort((a, b) => b.evaluation.rank - a.evaluation.rank);
-  
+  evaluatedHands.sort((a, b) => b.evaluation!.rank - a.evaluation!.rank);
+
   // Get the highest rank
-  const highestRank = evaluatedHands[0].evaluation.rank;
-  
+  const highestRank = evaluatedHands[0].evaluation!.rank;
+
   // Filter players with the highest rank
   const playersWithHighestRank = evaluatedHands.filter(
-    player => player.evaluation.rank === highestRank
+    player => player.evaluation!.rank === highestRank
   );
-  
+
   // If only one player has the highest rank, they win
   if (playersWithHighestRank.length === 1) {
+    const result = playersWithHighestRank[0].evaluation!;
     return {
       winnerId: playersWithHighestRank[0].userId,
-      winningHand: playersWithHighestRank[0].evaluation
+      winningHand: {
+        rank: result.rank as HandRank,
+        description: result.description,
+        bestHand: result.bestHand
+      }
     };
   }
-  
+
   // Tiebreaker logic would go here for hands of the same rank
   // For now, just return the first player with the highest rank
+  const result = playersWithHighestRank[0].evaluation!;
   return {
     winnerId: playersWithHighestRank[0].userId,
-    winningHand: playersWithHighestRank[0].evaluation
+    winningHand: {
+      rank: result.rank as HandRank,
+      description: result.description,
+      bestHand: result.bestHand
+    }
   };
 } 
