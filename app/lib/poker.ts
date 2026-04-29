@@ -157,7 +157,7 @@ function checkStraightFlush(cards: ParsedCard[]): Card[] | null {
   });
 
   // Check each suit group for a straight
-  for (const [_, suitCards] of suits) {
+  for (const suitCards of suits.values()) {
     if (suitCards.length >= 5) {
       const straight = checkStraight(suitCards);
       if (straight) {
@@ -218,7 +218,7 @@ function checkFlush(cards: ParsedCard[]): Card[] | null {
     suits.get(card.suit)!.push(card);
   });
 
-  for (const [_, suitCards] of suits) {
+  for (const suitCards of suits.values()) {
     if (suitCards.length >= 5) {
       return suitCards.slice(0, 5).map(c => c.originalCard);
     }
@@ -322,7 +322,7 @@ function checkOnePair(cards: ParsedCard[]): Card[] | null {
   return null;
 }
 
-export function evaluateHand(cards: Card[], _numCards?: number): HandResult | null {
+export function evaluateHand(cards: Card[]): HandResult | null {
   if (!cards || !Array.isArray(cards) || cards.length === 0) {
     return null;
   }

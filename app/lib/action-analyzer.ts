@@ -1,4 +1,3 @@
-import { OpenAI } from 'openai';
 import { getHandStrength } from './poker-probability';
 
 interface ActionAnalysis {
@@ -10,12 +9,19 @@ interface ActionAnalysis {
     };
 }
 
+interface GameStatePlayer {
+    id?: string;
+    name?: string;
+    chips: number;
+    folded?: boolean;
+}
+
 interface GameState {
     phase: string;
     pot: number;
     currentBet: number;
     communityCards: string[];
-    players: any[];
+    players: GameStatePlayer[];
 }
 
 interface PlayerAction {
@@ -28,7 +34,7 @@ interface PlayerAction {
         chips: number;
         totalBet: number;
     };
-    players: any[];
+    players: GameStatePlayer[];
 }
 
 async function analyzePlayerAction(

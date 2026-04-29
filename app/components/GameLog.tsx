@@ -7,15 +7,17 @@ interface LogEntry {
   action: string;
   amount?: number;
   timestamp: number;
+  aiAnalysis?: string;
 }
 
 interface GameLogProps {
   logs: LogEntry[];
   isVisible: boolean;
   onClose: () => void;
+  debugMode?: boolean;
 }
 
-const GameLog: React.FC<GameLogProps> = ({ logs, isVisible, onClose }) => {
+const GameLog: React.FC<GameLogProps> = ({ logs, isVisible, onClose, debugMode = false }) => {
   const { position, onMouseDown } = useDraggable({
     initialPosition: () => ({ x: window.innerWidth - 336, y: window.innerHeight - 400 }),
   });
@@ -51,6 +53,12 @@ const GameLog: React.FC<GameLogProps> = ({ logs, isVisible, onClose }) => {
                 <span className="text-gray-300"> {log.action}</span>
                 {log.amount !== undefined && (
                   <span className="text-yellow-400"> ${log.amount}</span>
+                )}
+                {debugMode && log.aiAnalysis && (
+                  <div className="mt-1 rounded bg-gray-800 p-2 text-xs leading-relaxed text-gray-300">
+                    <span className="font-semibold text-purple-300">LLM Analysis: </span>
+                    {log.aiAnalysis}
+                  </div>
                 )}
               </li>
             ))}

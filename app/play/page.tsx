@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import PokerTable from '../components/PokerTable';
 import ActionControls from '../components/ActionControls';
 import GameResult from '../components/GameResult';
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { makeAIDecision } from '../lib/ai-player-llm';
 import ActionReplay from '../components/ActionReplay';
 import { fetchWithTimeout } from '@/lib/client-api';
+import { calculateWinProbability } from '../lib/poker-probability';
 // Define PlayerState interface to match ai-player.ts
 interface PlayerState {
   id: string;
@@ -47,6 +48,16 @@ interface LogEntry {
   action: string;
   amount?: number;
   timestamp: number;
+  aiAnalysis?: string;
+}
+
+interface WinnerInfo {
+  winner: PlayerInfo;
+  handDescription: string;
+  handRank: number;
+  pot: number;
+  bestHand: Card[];
+  isUser: boolean;
 }
 
 interface PlayPageProps {
@@ -77,16 +88,18 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   const [gamePhase, setGamePhase] = useState('');
   const [isGameActive, setIsGameActive] = useState(false);
   const [showdown, setShowdown] = useState(false);
-  const [winnerInfo, setWinnerInfo] = useState<any>(null);
+  const [winnerInfo, setWinnerInfo] = useState<WinnerInfo | null>(null);
   const [playerContributions, setPlayerContributions] = useState<Record<string, number>>({});
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
   const [isLogVisible, setIsLogVisible] = useState(true);
   const [showActionReplay, setShowActionReplay] = useState(false);
   const [gameStartError, setGameStartError] = useState<string | null>(null);
   const [isStartingGame, setIsStartingGame] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Ref to track if an AI action is in progress to prevent multiple simultaneous AI actions
   const isAIActing = useRef(false);
+  const handlePlayerActionRef = useRef<(action: string, reason: string, amount?: number) => Promise<void>>(async () => {});
 
   // Add gameId state
   const [gameIdState, setGameId] = useState<string | null>(null);
@@ -370,7 +383,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
       const personality = createAIPersonality(aiLevel);
 
       console.log(`AI personality: ${aiLevel}`);
-      let timeoutId: any;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       // Get AI decision
       makeAIDecision(aiPlayerState, gameStateForAI, personality).then((decision) => {
         console.log(`AI ${currentPlayer.name} decision:`, decision);
@@ -390,7 +403,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
           }
 
           console.log(`Executing AI action: ${decision.action}`, decision.amount);
-          handlePlayerAction(decision.action, decision.reason || '', decision.amount);
+          handlePlayerActionRef.current(decision.action, decision.reason || '', decision.amount);
         }, AI_ACTION_DELAY);
 
       })
@@ -482,6 +495,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
       const player = players[currentPlayerIndex];
       console.log(`🎮 Player ${player.name} (${currentPlayerIndex}) action: ${normalizedAction} ${amount !== undefined ? amount : ''}`);
+      const aiAnalysis = player.isAI && reason && reason !== 'human' ? reason : undefined;
 
       // Create a copy of players array to modify
       const newPlayers = [...players];
@@ -646,6 +660,14 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
         });
       }
 
+      if (aiAnalysis && newLogs.length > gameLogs.length) {
+        const lastLog = newLogs[newLogs.length - 1];
+        newLogs[newLogs.length - 1] = {
+          ...lastLog,
+          aiAnalysis,
+        };
+      }
+
       // Update state
       setPlayers(newPlayers);
       setPot(newPot);
@@ -671,6 +693,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
       // Continue with the game even if storing the action fails
     }
   };
+  handlePlayerActionRef.current = handlePlayerAction;
 
   // Move to next player or phase
   const moveToNextPlayerOrPhase = (updatedPlayers: PlayerInfo[], newContributions: Record<string, number>, currentBetAmount: number) => {
@@ -962,6 +985,18 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   // Player information for the current user
   const userPlayer = players.find(p => p.id === userId);
   const isUserTurn = userPlayer && currentPlayerIndex === players.indexOf(userPlayer);
+  const winProbabilities = useMemo(() => {
+    if (!debugMode || players.length === 0) return {};
+
+    return calculateWinProbability(
+      players.map(player => ({
+        id: player.id,
+        cards: player.cards || [],
+        folded: player.folded || false,
+      })),
+      communityCards
+    );
+  }, [debugMode, players, communityCards]);
 
   // Determine if user can check (no current bet or already matched the bet)
   const userContribution = playerContributions[userId] || 0;
@@ -1018,14 +1053,29 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
         <h1 className="text-3xl font-bold">
           {isReviewMode ? 'Game Review' : 'Poker Game'}
         </h1>
-        {isReviewMode && (
+        <div className="flex items-center gap-3">
+          {!isReviewMode && (
+            <button
+              type="button"
+              onClick={() => setDebugMode(prev => !prev)}
+              className={`px-4 py-2 rounded transition-colors ${debugMode
+                ? 'bg-yellow-500 text-gray-950 hover:bg-yellow-400'
+                : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
+              aria-pressed={debugMode}
+            >
+              Debug {debugMode ? 'On' : 'Off'}
+            </button>
+          )}
+          {isReviewMode && (
           <Link
             href="/games"
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
           >
             Back to Games
           </Link>
-        )}
+          )}
+        </div>
       </div>
 
       {!isGameActive && !winnerInfo && !isReviewMode && (
@@ -1057,6 +1107,8 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
         gamePhase={gamePhase}
         userId={userId}
         showdown={showdown || isReviewMode}
+        debugMode={debugMode}
+        winProbabilities={winProbabilities}
       />
 
       {isGameActive && userPlayer && isUserTurn && (
@@ -1089,6 +1141,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
         logs={gameLogs}
         isVisible={isLogVisible}
         onClose={() => setIsLogVisible(false)}
+        debugMode={debugMode}
       />
 
       {winnerInfo && (

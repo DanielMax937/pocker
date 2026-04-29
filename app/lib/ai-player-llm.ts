@@ -1,11 +1,17 @@
 import { getHandStrength } from './poker-probability';
-import { AILevel, GameState, makeAIDecision as makeAIDecisionFallback, PlayerState } from './ai-player';
+import { AILevel, AIPersonality, GameState, makeAIDecision as makeAIDecisionFallback, PlayerState } from './ai-player';
 
 
 interface AIDecisionWithReason {
   action: string;
   amount?: number;
   reason: string;
+}
+
+interface AIResponse {
+  action?: string;
+  amount?: number | string;
+  reason?: string;
 }
 
 // Evaluate pocket cards strength
@@ -51,53 +57,10 @@ function getCardValueRankDescription(value: string): string {
   return rankMap[value] || value;
 }
 
-// Determine bet size with explanation
-function determineBetSizeWithReason(
-  chips: number,
-  pot: number,
-  handStrength: number,
-  phase: string
-): { amount: number; reason: string } {
-  let betRatio = 0.5;
-  let reasons: string[] = [];
-
-  // Adjust based on hand strength
-  if (handStrength > 0.8) {
-    betRatio += 0.3;
-    reasons.push('手牌非常强，增加下注比例');
-  } else if (handStrength > 0.6) {
-    betRatio += 0.2;
-    reasons.push('手牌较强，适度增加下注');
-  } else if (handStrength < 0.3) {
-    betRatio -= 0.2;
-    reasons.push('手牌较弱，降低下注比例');
-  }
-
-  // Adjust based on game phase
-  if (phase === 'RIVER') {
-    betRatio += 0.2;
-    reasons.push('河牌圈，增加下注施加压力');
-  } else if (phase === 'TURN') {
-    betRatio += 0.1;
-    reasons.push('转牌圈，适度增加下注');
-  }
-
-  // Calculate bet amount
-  let betAmount = Math.floor(pot * betRatio);
-  betAmount = Math.max(betAmount, 20); // Minimum bet
-  betAmount = Math.min(betAmount, chips); // Can't bet more than we have
-  betAmount = Math.floor(betAmount / 5) * 5; // Round to nearest 5
-
-  return {
-    amount: betAmount,
-    reason: `下注金额 ${betAmount} (${Math.round(betRatio * 100)}% 底池)。\n原因：${reasons.join('；')}`
-  };
-}
-
 export async function makeAIDecision(
   aiPlayer: PlayerState,
   gameState: GameState,
-  personality: any,
+  personality: AIPersonality,
   gameId?: string
 ): Promise<AIDecisionWithReason> {
   try {
@@ -148,7 +111,7 @@ export async function makeAIDecision(
         })
       });
 
-      const aiResponse = await res.json();
+      const aiResponse = await res.json() as AIResponse;
 
       if (!aiResponse.action || !aiResponse.reason ||
         !['FOLD', 'CHECK', 'CALL', 'RAISE', 'ALL_IN'].includes(aiResponse.action)) {
@@ -158,13 +121,7 @@ export async function makeAIDecision(
       let amount: number | undefined;
 
       if (aiResponse.action === 'RAISE') {
-        // const betDecision = determineBetSizeWithReason(
-        //   aiPlayer.chips,
-        //   gameState.pot,
-        //   handStrength,
-        //   gameState.phase
-        // );
-        amount = aiResponse.amount;
+        amount = typeof aiResponse.amount === 'string' ? Number(aiResponse.amount) : aiResponse.amount;
       } else if (aiResponse.action === 'CALL') {
         amount = gameState.currentBet - aiPlayer.totalBet;
       }
@@ -174,7 +131,7 @@ export async function makeAIDecision(
         amount,
         reason: aiResponse.reason
       };
-    } catch (error) {
+    } catch {
       console.log('Failed to parse OpenAI response, using fallback AI');
       const fallbackDecision = makeAIDecisionFallback(aiPlayer, gameState, {
         level: AILevel.MEDIUM,

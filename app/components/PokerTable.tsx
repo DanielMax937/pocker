@@ -12,6 +12,8 @@ interface PokerTableProps {
   gamePhase: string;
   userId: string;
   showdown: boolean;
+  debugMode?: boolean;
+  winProbabilities?: Record<string, number>;
 }
 
 const PokerTable: React.FC<PokerTableProps> = ({
@@ -23,6 +25,8 @@ const PokerTable: React.FC<PokerTableProps> = ({
   gamePhase,
   userId,
   showdown,
+  debugMode = false,
+  winProbabilities = {},
 }) => {
   const renderPositions = () => {
     // Calculate positions for players around the table
@@ -73,6 +77,8 @@ const PokerTable: React.FC<PokerTableProps> = ({
             }}
             showCards={showdown || isUser}
             isUser={isUser}
+            debugMode={debugMode}
+            winProbability={winProbabilities[player.id]}
           />
         </div>
       );

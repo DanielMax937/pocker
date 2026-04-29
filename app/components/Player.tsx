@@ -19,12 +19,16 @@ interface PlayerProps {
   player: PlayerInfo;
   showCards?: boolean;
   isUser?: boolean;
+  debugMode?: boolean;
+  winProbability?: number;
 }
 
 const Player: React.FC<PlayerProps> = ({ 
   player, 
   showCards = false,
-  isUser = false
+  isUser = false,
+  debugMode = false,
+  winProbability
 }) => {
   const { 
     name, 
@@ -58,16 +62,23 @@ const Player: React.FC<PlayerProps> = ({
         <span className="text-yellow-300 font-bold">${chips}</span>
       </div>
       
-      <div className="flex justify-center">
-        {cards.map((card, index) => (
-          <Card 
-            key={index} 
-            card={card} 
-            faceDown={!showCards && !isUser} 
-          />
-        ))}
-        {cards.length === 0 && (
-          <div className="text-gray-500 text-sm">No cards</div>
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex justify-center">
+          {cards.map((card, index) => (
+            <Card
+              key={index}
+              card={card}
+              faceDown={!showCards && !isUser}
+            />
+          ))}
+          {cards.length === 0 && (
+            <div className="text-gray-500 text-sm">No cards</div>
+          )}
+        </div>
+        {debugMode && winProbability !== undefined && (
+          <div className="rounded bg-yellow-400 px-2 py-1 text-xs font-bold text-gray-950 shadow">
+            Win {winProbability.toFixed(1)}%
+          </div>
         )}
       </div>
       

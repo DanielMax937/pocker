@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 interface Position {
   x: number;
@@ -10,7 +10,10 @@ interface UseDraggableOptions {
 }
 
 export function useDraggable({ initialPosition }: UseDraggableOptions) {
-  const getInitial = typeof initialPosition === 'function' ? initialPosition : () => initialPosition;
+  const getInitial = useMemo(
+    () => typeof initialPosition === 'function' ? initialPosition : () => initialPosition,
+    [initialPosition]
+  );
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const dragStart = useRef<Position>({ x: 0, y: 0 });

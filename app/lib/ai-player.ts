@@ -1,4 +1,4 @@
-import { HandRank, evaluateHand } from './poker';
+import { evaluateHand } from './poker';
 
 export interface PlayerState {
   id: string;
@@ -184,7 +184,7 @@ const evaluateHandStrength = (cards: string[], communityCards: string[]): number
   }
   
   // Post-flop: use the evaluateHand function
-  const evaluation = evaluateHand(cards, communityCards as any);
+  const evaluation = evaluateHand([...cards, ...communityCards]);
   
   // Convert rank to a 0-1 scale
   // Higher ranks (Royal Flush = 10) should be closer to 1

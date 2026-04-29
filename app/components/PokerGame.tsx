@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PokerTable from './PokerTable';
 import PlayerStatusBar from './PlayerStatusBar';
 import GameLog from './GameLog';
-import { generateDeck, dealCards } from '../lib/poker';
+import { dealCards } from '../lib/poker';
 import { AILevel } from '../lib/ai-player';
 
 type GamePhase = 'pre-flop' | 'flop' | 'turn' | 'river' | 'showdown';
@@ -56,8 +56,8 @@ export function PokerGame({ gameId: initialGameId, isReviewMode }: PokerGameProp
   const [dealerIndex] = useState(0);
   const [communityCards, setCommunityCards] = useState<string[]>([]);
   const [pot, setPot] = useState(0);
-  const [currentBet, setCurrentBet] = useState(0);
-  const [deck, setDeck] = useState<string[]>([]);
+  const [, setCurrentBet] = useState(0);
+  const [, setDeck] = useState<string[]>([]);
   const [phase, setPhase] = useState<GamePhase>('pre-flop');
   const [showdown] = useState(false);
   const [winnerInfo] = useState<WinnerInfo | null>(null);

@@ -1,6 +1,4 @@
 import { TexasHoldem } from 'poker-odds-calc';
-import { type Card } from './types';
-import { type PlayerState } from './types';
 
 // Convert card format from "AH" to "Ah" for poker-odds-calc
 function convertCardFormat(card: string): string {
@@ -31,6 +29,7 @@ export function calculateWinProbability(
   remainingCards: number = 0
 ): { [key: string]: number } {
   try {
+    void remainingCards;
     const game = new TexasHoldem();
     
     const activaPlayerIndex: number[] = []
@@ -68,14 +67,12 @@ export function calculateWinProbability(
     
     // Map results back to player IDs
     const winProbabilities: { [key: string]: number } = {};
-    let activeIndex = 0;
     players.forEach((player, index) => {
       if (player.folded) {
         winProbabilities[player.id] = 0;
       } else {
         const activePlayerIndex = activaPlayerIndex.findIndex(i => i === index)
         winProbabilities[player.id] = calcPlayers[activePlayerIndex].getWinsPercentage();
-        activeIndex++;
       }
     });
 
@@ -103,7 +100,7 @@ export function getHandStrength(playerCards: string[], communityCards: string[])
       }
     })
     // 这个作为基准
-    game.addPlayer(baseCards as any)
+    game.addPlayer([baseCards[0], baseCards[1]])
     if (communityCards.length > 0) {
       const formattedCommunityCards = communityCards.map(convertCardFormat);
       game.setBoard(formattedCommunityCards);
