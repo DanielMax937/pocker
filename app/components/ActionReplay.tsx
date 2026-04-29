@@ -82,6 +82,12 @@ const ActionReplay: React.FC<ActionReplayProps> = ({ gameId, onClose }) => {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept keys when an input element is focused (e.g. slider)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
       if (e.key === 'ArrowLeft') {
         goToPreviousAction();
       } else if (e.key === 'ArrowRight') {

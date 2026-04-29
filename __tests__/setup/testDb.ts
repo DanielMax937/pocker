@@ -9,8 +9,10 @@ export async function setupTestDb() {
   prisma = new PrismaClient()
   await prisma.$connect()
   
-  // Clean all tables
+  // Clean all tables (order matters for foreign keys)
   await prisma.gameAction.deleteMany()
+  await prisma.playerHand.deleteMany()
+  await prisma.round.deleteMany()
   await prisma.gamePlayer.deleteMany()
   await prisma.game.deleteMany()
 

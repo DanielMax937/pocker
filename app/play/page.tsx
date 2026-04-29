@@ -13,6 +13,7 @@ import { createAIPersonality, AILevel } from '../lib/ai-player';
 import Link from 'next/link';
 import { makeAIDecision } from '../lib/ai-player-llm';
 import ActionReplay from '../components/ActionReplay';
+import { fetchWithTimeout } from '@/lib/client-api';
 // Define PlayerState interface to match ai-player.ts
 interface PlayerState {
   id: string;
@@ -81,6 +82,8 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
   const [isLogVisible, setIsLogVisible] = useState(true);
   const [showActionReplay, setShowActionReplay] = useState(false);
+  const [gameStartError, setGameStartError] = useState<string | null>(null);
+  const [isStartingGame, setIsStartingGame] = useState(false);
 
   // Ref to track if an AI action is in progress to prevent multiple simultaneous AI actions
   const isAIActing = useRef(false);
@@ -168,10 +171,16 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   // Modify startGame to create a new game in the database
   const startGame = async () => {
     console.log("=== STARTING NEW GAME ===");
+    setGameStartError(null);
+    setIsStartingGame(true);
 
     try {
-      // Create a new game in the database
-      const response = await fetch('/api/games', {
+      if (players.length === 0) {
+        throw new Error('Players not ready. Wait a moment and try again.');
+      }
+
+      // Create a new game in the database (long timeout + retry: first hit may compile route + DB)
+      const response = await fetchWithTimeout('/api/games', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,10 +193,17 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
             startingChips: STARTING_CHIPS,
           })),
         }),
+        timeoutMs: 120000,
+        retries: 1,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create game');
+        const errJson = await response.json().catch(() => ({}));
+        const msg =
+          typeof errJson === 'object' && errJson && 'error' in errJson
+            ? String((errJson as { error?: string }).error)
+            : `HTTP ${response.status}`;
+        throw new Error(msg || 'Failed to create game');
       }
 
       const game = await response.json();
@@ -293,7 +309,15 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
       console.log(`Game state updated. Starting the game with ${newPlayers.length} players.`);
     } catch (error) {
       console.error('Failed to start game:', error);
-      return;
+      const message =
+        error instanceof Error
+          ? error.name === 'AbortError'
+            ? 'Request timed out. The server may still be compiling — wait a few seconds and tap Start again.'
+            : error.message
+          : 'Failed to start game';
+      setGameStartError(message);
+    } finally {
+      setIsStartingGame(false);
     }
   };
 
@@ -1006,11 +1030,20 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
       {!isGameActive && !winnerInfo && !isReviewMode && (
         <div className="text-center mb-8">
+          {gameStartError && (
+            <div
+              className="mb-4 max-w-lg mx-auto rounded border border-red-300 bg-red-50 px-4 py-3 text-left text-sm text-red-800"
+              role="alert"
+            >
+              {gameStartError}
+            </div>
+          )}
           <button
             onClick={startGame}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-xl font-bold shadow-lg transition-colors"
+            disabled={isStartingGame}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg text-xl font-bold shadow-lg transition-colors"
           >
-            Start New Game
+            {isStartingGame ? 'Starting…' : 'Start New Game'}
           </button>
         </div>
       )}
@@ -1069,7 +1102,6 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
           onPlayAgain={startNewHand}
           onReview={() => setShowActionReplay(true)}
           isReviewMode={isReviewMode}
-          gameId={gameIdState || undefined}
         />
       )}
 

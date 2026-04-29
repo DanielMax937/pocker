@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchWithTimeout } from '@/lib/client-api';
 
 interface Game {
   id: string;
@@ -28,7 +29,11 @@ export default function GamesPage() {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch('/api/games');
+      const response = await fetchWithTimeout('/api/games', {
+        method: 'GET',
+        timeoutMs: 120000,
+        retries: 1,
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch games');
       }
@@ -36,7 +41,13 @@ export default function GamesPage() {
       setGames(data);
       setLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load games');
+      const msg =
+        err instanceof Error
+          ? err.name === 'AbortError'
+            ? 'Request timed out. Try again in a few seconds.'
+            : err.message
+          : 'Failed to load games';
+      setError(msg);
       setLoading(false);
     }
   };
@@ -119,7 +130,7 @@ export default function GamesPage() {
                           : 'bg-gray-100'
                       }`}
                     >
-                      <div className="font-medium">{player.name}</div>
+                      <div className={`font-medium ${game.winner?.id === player.id ? '' : 'text-[#999]'}`}>{player.name}</div>
                       <div className="text-sm">
                         {game.winner?.id === player.id && '👑 Winner'}
                       </div>

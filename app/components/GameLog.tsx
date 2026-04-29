@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDraggable } from './useDraggable';
 
 interface LogEntry {
   playerId: string;
@@ -15,13 +16,23 @@ interface GameLogProps {
 }
 
 const GameLog: React.FC<GameLogProps> = ({ logs, isVisible, onClose }) => {
+  const { position, onMouseDown } = useDraggable({
+    initialPosition: () => ({ x: window.innerWidth - 336, y: window.innerHeight - 400 }),
+  });
+
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-lg text-white z-40 overflow-hidden flex flex-col">
-      <div className="bg-gray-800 px-4 py-2 flex justify-between items-center border-b border-gray-700">
+    <div
+      className="w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-lg text-white z-40 overflow-hidden flex flex-col"
+      style={{ position: 'fixed', left: position.x, top: position.y }}
+    >
+      <div
+        className="bg-gray-800 px-4 py-2 flex justify-between items-center border-b border-gray-700 cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={onMouseDown}
+      >
         <h3 className="font-bold">Game Log</h3>
-        <button 
+        <button
           onClick={onClose}
           className="text-gray-400 hover:text-white focus:outline-none"
         >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ActionControlsProps {
   currentBet: number;
@@ -39,8 +39,18 @@ const ActionControls: React.FC<ActionControlsProps> = ({
   // Determine minimum bet/raise (double the current bet or 20 if no bet)
   const minimumBet = currentBet > 0 ? currentBet * 2 : 20;
 
+  // Sync betAmount when minimumBet changes (e.g. after blinds are posted)
+  useEffect(() => {
+    setBetAmount((prev) => {
+      const clamped = Math.max(minimumBet, Math.min(prev, playerChips));
+      // Round to nearest 10
+      return Math.round(clamped / 10) * 10;
+    });
+  }, [minimumBet, playerChips]);
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBetAmount(parseInt(e.target.value));
+    const val = Math.round(parseInt(e.target.value) / 10) * 10;
+    setBetAmount(Math.max(minimumBet, Math.min(val, playerChips)));
   };
 
   if (!isPlayerTurn) {
@@ -105,9 +115,10 @@ const ActionControls: React.FC<ActionControlsProps> = ({
           type="range"
           min={minimumBet}
           max={playerChips}
+          step={10}
           value={betAmount}
           onChange={handleSliderChange}
-          className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+          className="w-full h-2 bg-gray-600 rounded-lg cursor-pointer"
         />
         <div className="flex justify-between text-xs mt-1">
           <span>${minimumBet}</span>

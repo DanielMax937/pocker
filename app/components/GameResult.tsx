@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { PlayerInfo } from './Player';
 import { Card as CardType } from '../lib/poker';
-import ActionReplay from './ActionReplay';
 
 interface GameResultProps {
   winner: PlayerInfo;
@@ -13,7 +12,6 @@ interface GameResultProps {
   onPlayAgain: () => void;
   onReview: () => void;
   isReviewMode: boolean;
-  gameId?: string;
 }
 
 const GameResult: React.FC<GameResultProps> = ({
@@ -24,10 +22,7 @@ const GameResult: React.FC<GameResultProps> = ({
   onPlayAgain,
   onReview,
   isReviewMode,
-  gameId
 }) => {
-  const [showActionReplay, setShowActionReplay] = useState(false);
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full text-white">
@@ -39,23 +34,13 @@ const GameResult: React.FC<GameResultProps> = ({
           <p className="text-lg mb-4">Pot: ${pot}</p>
         </div>
         <div className="flex flex-col gap-3">
-          {!isReviewMode && !showActionReplay && (
-            <>
-              <button
-                onClick={onReview}
-                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold"
-              >
-                Review Hand
-              </button>
-              {gameId && (
-                <button
-                  onClick={() => setShowActionReplay(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-semibold"
-                >
-                  Replay Actions
-                </button>
-              )}
-            </>
+          {!isReviewMode && (
+            <button
+              onClick={onReview}
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold"
+            >
+              Review Hand
+            </button>
           )}
           <button
             onClick={onPlayAgain}
@@ -65,13 +50,6 @@ const GameResult: React.FC<GameResultProps> = ({
           </button>
         </div>
       </div>
-
-      {showActionReplay && gameId && (
-        <ActionReplay
-          gameId={gameId}
-          onClose={() => setShowActionReplay(false)}
-        />
-      )}
     </div>
   );
 };

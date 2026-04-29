@@ -1,6 +1,7 @@
 import React from 'react';
 import PlayerStatus from './PlayerStatus';
 import { PlayerInfo } from './Player';
+import { useDraggable } from './useDraggable';
 
 interface PlayerStatusBarProps {
   players: PlayerInfo[];
@@ -11,13 +12,26 @@ interface PlayerStatusBarProps {
 
 const PlayerStatusBar: React.FC<PlayerStatusBarProps> = ({
   players,
-  currentPlayerIndex, 
+  currentPlayerIndex,
   dealerIndex,
   playerContributions
 }) => {
+  const { position, onMouseDown } = useDraggable({
+    initialPosition: { x: 0, y: 0 },
+  });
+
   return (
-    <div className="fixed left-0 top-0 w-72 h-full pointer-events-none">
-      <div className="relative w-full h-full">
+    <div
+      className="w-72 pointer-events-none"
+      style={{ position: 'fixed', left: position.x, top: position.y }}
+    >
+      <div
+        className="bg-gray-800 px-4 py-2 flex items-center border-b border-gray-700 cursor-grab active:cursor-grabbing pointer-events-auto select-none"
+        onMouseDown={onMouseDown}
+      >
+        <h3 className="font-bold text-white text-sm">Players</h3>
+      </div>
+      <div className="relative w-full pointer-events-auto">
         {players.map((player, index) => (
           <PlayerStatus
             key={player.id}

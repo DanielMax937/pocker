@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
+import { loadEnvLocal } from '@/lib/env';
+
+// Force .env.local values to override shell environment
+loadEnvLocal();
 
 interface GameAction {
   player: {
@@ -83,8 +87,7 @@ ${prompt}
                 }
             ],
             temperature: 0.7,
-            max_tokens: 40000,
-            response_format: { type: "json_object" }
+            max_tokens: 40000
         });
         
         const responseContent = completion.choices[0].message.content || '{}';
