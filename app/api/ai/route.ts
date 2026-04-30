@@ -90,7 +90,9 @@ ${prompt}
             max_tokens: 40000
         });
         
-        const responseContent = completion.choices[0].message.content || '{}';
+        let responseContent = completion.choices[0].message.content || '{}';
+        // Strip markdown code blocks if present
+        responseContent = responseContent.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
         const aiResponse = JSON.parse(responseContent);
         
         return NextResponse.json(aiResponse,
@@ -99,8 +101,8 @@ ${prompt}
     } catch (error) {
         console.error('Error in AI decision:', error);
         return NextResponse.json(
-            { error: 'Failed to get AI decision' },
-            { status: 500 }
+            { action: 'FOLD', reason: '分析请求失败，使用默认弃牌策略', error: 'Failed to get AI decision' },
+            { status: 200 }
         );
     }
 } 

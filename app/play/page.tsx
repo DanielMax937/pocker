@@ -30,14 +30,11 @@ const PHASES = ['PREFLOP', 'FLOP', 'TURN', 'RIVER', 'SHOWDOWN'];
 // Blinds structure
 const BLINDS = { small: 10, big: 20 };
 
-// Number of AI players
-const NUM_AI_PLAYERS = 3;
-
 // Starting chips
 const STARTING_CHIPS = 1000;
 
 // AI names
-const AI_NAMES = ['Alex', 'Jordan', 'Taylor', 'Casey', 'Morgan', 'Riley'];
+const AI_NAMES = ['Alex', 'Jordan', 'Taylor', 'Casey', 'Morgan', 'Riley', 'Sam'];
 
 // Delay for AI actions (ms)
 const AI_ACTION_DELAY = 1000;
@@ -49,6 +46,7 @@ interface LogEntry {
   amount?: number;
   timestamp: number;
   aiAnalysis?: string;
+  personalityName?: string;  // AI个性名称
 }
 
 interface WinnerInfo {
@@ -77,8 +75,6 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
   // Game state
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
-  const [isMusicMuted, setIsMusicMuted] = useState(false);
-  const backgroundAudioRef = useRef<HTMLAudioElement | null>(null);
   const [communityCards, setCommunityCards] = useState<Card[]>([]);
   const [deck, setDeck] = useState<Card[]>([]);
   const [pot, setPot] = useState(0);
@@ -96,6 +92,12 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   const [gameStartError, setGameStartError] = useState<string | null>(null);
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [numAIPlayers, setNumAIPlayers] = useState(5);
+  const [isUserAnalyzing, setIsUserAnalyzing] = useState(false);
+  const [userAnalysis, setUserAnalysis] = useState<string | null>(null);
+
+  // Ref to track if analysis has been done for the current turn
+  const analysisDoneForTurn = useRef(false);
 
   // Ref to track if an AI action is in progress to prevent multiple simultaneous AI actions
   const isAIActing = useRef(false);
@@ -136,16 +138,25 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
   // Initialize or reset the game
   const initializeGame = useCallback(() => {
-    // Generate random AI players
+    // Generate random AI players with personalities
     const shuffledNames = [...AI_NAMES].sort(() => Math.random() - 0.5);
-    const aiPlayers: PlayerInfo[] = Array.from({ length: NUM_AI_PLAYERS }).map((_, i) => ({
-      id: `ai-${i + 1}`,
-      name: shuffledNames[i],
-      chips: STARTING_CHIPS,
-      cards: [],
-      folded: false,
-      isAI: true,
-    }));
+    const aiPlayers: PlayerInfo[] = Array.from({ length: numAIPlayers }).map((_, i) => {
+      // Assign personality based on index
+      const aiLevel = i % 3 === 0 ? AILevel.EASY :
+        i % 3 === 1 ? AILevel.MEDIUM : AILevel.HARD;
+      const personality = createAIPersonality(aiLevel);
+
+      return {
+        id: `ai-${i + 1}`,
+        name: shuffledNames[i],
+        chips: STARTING_CHIPS,
+        cards: [],
+        folded: false,
+        isAI: true,
+        personalityName: personality.name,
+        personalityType: personality.type,
+      };
+    });
 
     // Create user player
     const userPlayer: PlayerInfo = {
@@ -179,7 +190,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
     setShowdown(false);
     setWinnerInfo(null);
     setPlayerContributions(initialContributions);
-  }, [userId, userName]);
+  }, [userId, userName, numAIPlayers]);
 
   // Modify startGame to create a new game in the database
   const startGame = async () => {
@@ -467,6 +478,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
       if (reason === 'human') {
         const actionData = await response.json();
         const actionId = actionData.id;
+        // Pass the pre-action analysis to the human endpoint
         await fetch(`/api/games/${gameIdState}/human`, {
           method: 'POST',
           headers: {
@@ -476,12 +488,9 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
             actionId: actionId,
             actionType: action,
             amount,
-            player: players[currentPlayerIndex],
-            communityCards: communityCards,
-            players: players,
+            reason: userAnalysis || undefined,
           }),
         });
-
       }
 
       // Ensure we have the current player
@@ -495,7 +504,9 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
       const player = players[currentPlayerIndex];
       console.log(`🎮 Player ${player.name} (${currentPlayerIndex}) action: ${normalizedAction} ${amount !== undefined ? amount : ''}`);
-      const aiAnalysis = player.isAI && reason && reason !== 'human' ? reason : undefined;
+      const aiAnalysis = player.isAI && reason && reason !== 'human'
+        ? reason
+        : (!player.isAI && userAnalysis ? userAnalysis : undefined);
 
       // Create a copy of players array to modify
       const newPlayers = [...players];
@@ -665,6 +676,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
         newLogs[newLogs.length - 1] = {
           ...lastLog,
           aiAnalysis,
+          personalityName: player.isAI ? player.personalityName : undefined,
         };
       }
 
@@ -674,6 +686,7 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
       setCurrentBet(newCurrentBet);
       setPlayerContributions(newContributions);
       setGameLogs(newLogs);
+      setUserAnalysis(null);
 
       console.log(`After action: pot=${newPot}, currentBet=${newCurrentBet}`);
       console.log("Player contributions:", newContributions);
@@ -1002,53 +1015,100 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
   const userContribution = playerContributions[userId] || 0;
   const canUserCheck = currentBet === 0 || userContribution === currentBet;
 
+  // LLM analysis for user's turn (reference only, not used for action)
+  useEffect(() => {
+    if (!isGameActive || !isUserTurn) {
+      setUserAnalysis(null);
+      setIsUserAnalyzing(false);
+      analysisDoneForTurn.current = false;
+      return;
+    }
+
+    // Skip if analysis already done for this turn
+    if (analysisDoneForTurn.current) {
+      return;
+    }
+
+    const fetchUserAnalysis = async () => {
+      analysisDoneForTurn.current = true;
+      setIsUserAnalyzing(true);
+      setUserAnalysis(null);
+
+      try {
+        const gameStateForAI = {
+          currentBet: currentBet,
+          pot: pot,
+          communityCards: communityCards,
+          phase: gamePhase,
+          players: players.map(p => ({
+            id: p.id,
+            chips: p.chips,
+            cards: p.cards || [],
+            folded: p.folded || false,
+            totalBet: playerContributions[p.id] || 0,
+          })),
+        };
+
+        const aiPlayerState = {
+          id: userId,
+          chips: userPlayer?.chips || 0,
+          cards: userPlayer?.cards || [],
+          folded: false,
+          totalBet: playerContributions[userId] || 0,
+        };
+
+        const prompt = `
+作为一个德州扑克AI助手，请分析当前局面并给出建议。你不需要做出决策，只需要分析局面。
+
+当前手牌信息：
+${JSON.stringify(aiPlayerState)}
+
+当前游戏状态：
+${JSON.stringify(gameStateForAI)}
+
+请分析：
+1. 手牌强度评估
+2. 当前局面分析
+3. 建议的操作及理由
+
+必须以JSON格式返回，包含以下字段：
+- action: 建议的操作 (fold/check/call/bet/raise/all-in)
+- reason: 详细的分析理由（用中文）
+`;
+
+        const response = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            gameId: gameIdState,
+            gameState: gameStateForAI,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserAnalysis(data.reason || '无法获取分析');
+        }
+      } catch (error) {
+        console.error('Error fetching user analysis:', error);
+        setUserAnalysis('分析请求失败');
+      } finally {
+        setIsUserAnalyzing(false);
+      }
+    };
+
+    fetchUserAnalysis();
+  }, [isGameActive, isUserTurn, userId, userPlayer, currentBet, pot, communityCards, gamePhase, gameIdState]);
+
   // Toggle log visibility
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const toggleLogVisibility = () => {
     setIsLogVisible(!isLogVisible);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const toggleMusic = () => {
-    const nextMuted = !isMusicMuted;
-    setIsMusicMuted(nextMuted);
-    const audio = backgroundAudioRef.current;
-    if (!audio) return;
-    if (nextMuted) {
-      audio.pause();
-    } else {
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.catch((err) => {
-          console.warn('Background music play was prevented:', err);
-        });
-      }
-    }
-  };
-
-  useEffect(() => {
-    const audio = backgroundAudioRef.current;
-    if (!audio) return;
-
-    if (!isReviewMode && isGameActive && !isMusicMuted) {
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.catch((err) => {
-          console.warn('Background music play was prevented:', err);
-        });
-      }
-    } else {
-      audio.pause();
-    }
-  }, [isGameActive, isReviewMode, isMusicMuted]);
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <audio
-        ref={backgroundAudioRef}
-        src="/background-music.mp3"
-        loop
-      />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">
           {isReviewMode ? 'Game Review' : 'Poker Game'}
@@ -1088,6 +1148,30 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
               {gameStartError}
             </div>
           )}
+          <div className="mb-6 flex flex-col items-center gap-2">
+            <label htmlFor="ai-count" className="text-gray-300 text-sm font-medium">
+              Number of AI Players
+            </label>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-sm">3</span>
+              <input
+                id="ai-count"
+                type="range"
+                min={3}
+                max={7}
+                value={numAIPlayers}
+                onChange={(e) => setNumAIPlayers(Number(e.target.value))}
+                className="w-48 accent-green-500"
+              />
+              <span className="text-gray-400 text-sm">7</span>
+              <span className="ml-2 bg-green-700 text-white px-3 py-1 rounded-full text-sm font-bold min-w-[2.5rem] text-center">
+                {numAIPlayers}
+              </span>
+            </div>
+            <p className="text-gray-500 text-xs">
+              {numAIPlayers + 1} players total (you + {numAIPlayers} AI)
+            </p>
+          </div>
           <button
             onClick={startGame}
             disabled={isStartingGame}
@@ -1113,20 +1197,37 @@ export default function PokerGamePage({ searchParams }: PlayPageProps) {
 
       {isGameActive && userPlayer && isUserTurn && (
         <div className="mt-6">
-          <ActionControls
-            currentBet={currentBet}
-            playerChips={userPlayer.chips}
-            playerContribution={userContribution}
-            isPlayerTurn={true}
-            canCheck={canUserCheck}
-            canRaise={currentBet > 0}
-            onFold={handleFold}
-            onCheck={handleCheck}
-            onCall={handleCall}
-            onBet={handleBet}
-            onRaise={handleRaise}
-            onAllIn={handleAllIn}
-          />
+          {isUserAnalyzing ? (
+            <div className="bg-gray-800 p-6 rounded-lg text-center">
+              <div className="animate-spin inline-block w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full mb-3"></div>
+              <p className="text-yellow-400 font-bold">AI is analyzing the situation...</p>
+              <p className="text-gray-400 text-sm mt-1">Please wait for the analysis to complete</p>
+            </div>
+          ) : (
+            <>
+              {/* LLM Analysis (shown before action buttons) */}
+              {userAnalysis && (
+                <div className="mb-4 bg-gray-800 p-4 rounded-lg">
+                  <h4 className="text-purple-300 font-bold text-sm mb-2">LLM Analysis (Reference)</h4>
+                  <p className="text-gray-300 text-sm">{userAnalysis}</p>
+                </div>
+              )}
+              <ActionControls
+                currentBet={currentBet}
+                playerChips={userPlayer.chips}
+                playerContribution={userContribution}
+                isPlayerTurn={true}
+                canCheck={canUserCheck}
+                canRaise={currentBet > 0}
+                onFold={handleFold}
+                onCheck={handleCheck}
+                onCall={handleCall}
+                onBet={handleBet}
+                onRaise={handleRaise}
+                onAllIn={handleAllIn}
+              />
+            </>
+          )}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Card from './Card';
 import { Card as CardType } from '../lib/poker';
 
@@ -13,6 +13,8 @@ export interface PlayerInfo {
   lastAction?: string;
   isDealer?: boolean;
   isAI?: boolean;
+  personalityName?: string;  // 个性名称
+  personalityType?: string;  // 个性类型
 }
 
 interface PlayerProps {
@@ -23,19 +25,21 @@ interface PlayerProps {
   winProbability?: number;
 }
 
-const Player: React.FC<PlayerProps> = ({ 
-  player, 
+const Player: React.FC<PlayerProps> = ({
+  player,
   showCards = false,
   isUser = false,
   debugMode = false,
   winProbability
 }) => {
-  const { 
-    name, 
-    chips, 
-    cards = [], 
-    folded = false, 
-    isActive = true, 
+  const [isHovered, setIsHovered] = useState(false);
+
+  const {
+    name,
+    chips,
+    cards = [],
+    folded = false,
+    isActive = true,
     isCurrentTurn = false,
     lastAction,
     isDealer,
@@ -49,52 +53,109 @@ const Player: React.FC<PlayerProps> = ({
   if (folded) borderColorClass = 'border-gray-500';
 
   return (
-    <div className={`relative flex flex-col items-center p-3 rounded-lg bg-gray-800 m-2 border-2 ${borderColorClass} ${isCurrentTurn ? 'animate-pulse' : ''}`}>
-      <div className="flex justify-between w-full mb-2">
-        <div className="flex items-center">
-          <span className={`font-bold ${isUser ? 'text-green-400' : 'text-white'} mr-1`}>
-            {name} {isAI ? '(AI)' : ''}
+    <div
+      className="relative"
+      style={{ zIndex: isHovered ? 9999 : 'auto' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Compact player card */}
+      <div className={`flex flex-col items-center p-1.5 rounded-lg bg-gray-800 m-1 border-2 ${borderColorClass} ${isCurrentTurn ? 'animate-pulse' : ''} min-w-[80px]`}>
+        <div className="flex items-center gap-1 mb-1">
+          <span className={`font-bold text-xs ${isUser ? 'text-green-400' : 'text-white'} truncate max-w-[60px]`}>
+            {name}
           </span>
           {isDealer && (
-            <span className="bg-blue-500 text-white text-xs px-1 rounded-full">D</span>
+            <span className="bg-blue-500 text-white text-[10px] px-1 rounded-full leading-tight">D</span>
           )}
         </div>
-        <span className="text-yellow-300 font-bold">${chips}</span>
-      </div>
-      
-      <div className="flex items-center justify-center gap-2">
+
         <div className="flex justify-center">
           {cards.map((card, index) => (
             <Card
               key={index}
               card={card}
               faceDown={!showCards && !isUser}
+              size="compact"
             />
           ))}
           {cards.length === 0 && (
-            <div className="text-gray-500 text-sm">No cards</div>
+            <div className="text-gray-500 text-[10px]">--</div>
           )}
         </div>
+
+        <div className="text-yellow-300 text-[10px] font-bold mt-0.5">${chips}</div>
+
         {debugMode && winProbability !== undefined && (
-          <div className="rounded bg-yellow-400 px-2 py-1 text-xs font-bold text-gray-950 shadow">
-            Win {winProbability.toFixed(1)}%
+          <div className="rounded bg-yellow-400 px-1 text-[10px] font-bold text-gray-950 mt-0.5">
+            {winProbability.toFixed(0)}%
+          </div>
+        )}
+
+        {lastAction && (
+          <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[80px]">
+            {lastAction}
+          </div>
+        )}
+
+        {folded && (
+          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg">
+            <span className="text-red-500 font-bold text-xs uppercase">Fold</span>
           </div>
         )}
       </div>
-      
-      {lastAction && (
-        <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-700 text-white px-2 py-0.5 rounded-full text-xs">
-          {lastAction}
-        </div>
-      )}
-      
-      {folded && (
-        <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center rounded-lg">
-          <span className="text-red-500 font-bold text-lg uppercase">Folded</span>
+
+      {/* Hover tooltip */}
+      {isHovered && (
+        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 border border-gray-600 rounded-xl p-4 shadow-2xl min-w-[200px] pointer-events-none">
+          <div className="flex items-center justify-between mb-2">
+            <span className={`font-bold text-base ${isUser ? 'text-green-400' : 'text-white'}`}>
+              {name} {isAI ? '(AI)' : ''}
+            </span>
+            {isDealer && (
+              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full ml-2">Dealer</span>
+            )}
+          </div>
+          {isAI && player.personalityName && (
+            <div className="text-orange-400 text-xs mb-2">个性: {player.personalityName}</div>
+          )}
+
+          <div className="text-yellow-300 font-bold text-sm mb-2">Chips: ${chips}</div>
+
+          <div className="flex justify-center gap-1 mb-2">
+            {cards.map((card, index) => (
+              <Card
+                key={index}
+                card={card}
+                faceDown={!showCards && !isUser}
+                size="full"
+              />
+            ))}
+            {cards.length === 0 && (
+              <div className="text-gray-500 text-sm">No cards</div>
+            )}
+          </div>
+
+          {debugMode && winProbability !== undefined && (
+            <div className="text-center rounded bg-yellow-400 px-2 py-1 text-xs font-bold text-gray-950">
+              Win Probability: {winProbability.toFixed(1)}%
+            </div>
+          )}
+
+          {lastAction && (
+            <div className="text-gray-400 text-xs mt-1 text-center">Last: {lastAction}</div>
+          )}
+
+          {isCurrentTurn && (
+            <div className="text-yellow-400 text-xs mt-1 text-center font-bold">Current Turn</div>
+          )}
+
+          {/* Tooltip arrow */}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-gray-900"></div>
         </div>
       )}
     </div>
   );
 };
 
-export default Player; 
+export default Player;

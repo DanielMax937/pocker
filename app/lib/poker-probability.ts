@@ -50,6 +50,15 @@ export function calculateWinProbability(
       return result;
     }
 
+    // If no active players, all have 0% win probability
+    if (activePlayers.length === 0) {
+      const result: { [key: string]: number } = {};
+      players.forEach(p => {
+        result[p.id] = 0;
+      });
+      return result;
+    }
+
     // Add players to the game
     activePlayers.forEach(player => {
       game.addPlayer(convertToHand(player.cards));

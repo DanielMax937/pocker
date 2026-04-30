@@ -1,4 +1,3 @@
-import { getHandStrength } from './poker-probability';
 import { AILevel, AIPersonality, GameState, makeAIDecision as makeAIDecisionFallback, PlayerState } from './ai-player';
 
 
@@ -64,39 +63,66 @@ export async function makeAIDecision(
   gameId?: string
 ): Promise<AIDecisionWithReason> {
   try {
-    // 1. Evaluate hand strength
-    const handStrength = getHandStrength(aiPlayer.cards || [], gameState.communityCards);
-
-    // 2. Evaluate pocket cards
+    // 1. Evaluate pocket cards description
     const pocketCardsEvaluation = evaluatePocketCards(aiPlayer.cards || []);
 
-    // 3. Get card values
+    // 2. Get card values
     const cardValues = (aiPlayer.cards || []).map(card => getCardValueRankDescription(card[0]));
 
-    // Prepare game state description for OpenAI
+    // 3. Count active players
+    const activePlayers = gameState.players.filter(p => !p.folded).length;
+
+    // 4. Calculate pot odds
+    const amountToCall = gameState.currentBet - aiPlayer.totalBet;
+    const potOdds = amountToCall > 0 ? Math.round((amountToCall / (gameState.pot + amountToCall)) * 100) : 0;
+
+    // 5. Build unified prompt
     const prompt = `
-作为一个德州扑克AI玩家，请基于以下信息做出决策。必须以JSON格式返回，包含action和reason两个字段。
+作为一个德州扑克AI玩家，请基于以下信息做出决策。必须以JSON格式返回。
+
+玩家个性：
+- 类型：${personality.name}
+- 描述：${personality.description}
+- 唬人倾向：${personality.canBluff ? `是（频率${Math.round(personality.bluffFrequency * 100)}%）` : '否（从不诈唬）'}
+- 风险承受度：${Math.round(personality.riskTolerance * 100)}%
+- 激进程度：${Math.round(personality.aggressiveness * 100)}%
 
 当前手牌信息：
 - 手牌：${cardValues.join(', ')}
 - 手牌类型：${pocketCardsEvaluation}
-- 手牌强度：${Math.round(handStrength * 100)}%
+（请根据手牌类型自行评估牌力强弱：对子、高牌A/K、同花连张等属于强牌；不同花低牌属于弱牌）
 
 游戏状态：
 - 当前阶段：${gameState.phase}
-- 底池：${gameState.pot}
-- 当前下注：${gameState.currentBet}
-- 玩家筹码：${aiPlayer.chips}
+- 底池：$${gameState.pot}
+- 当前下注：$${gameState.currentBet}
+- 需要跟注：$${amountToCall}
+- 底池赔率：${potOdds}%
+- 玩家筹码：$${aiPlayer.chips}
 - 公共牌：${gameState.communityCards.length > 0 ? gameState.communityCards.join(', ') : '无'}
+- 活跃玩家数：${activePlayers}
 
-请分析形势并返回如下格式的JSON：
+决策指引：
+${personality.canBluff ? `
+你是一个${personality.name}玩家，具备诈唬能力。请综合考虑：
+1. 弱牌时，如果对手少、底池大、位置好，可以考虑诈唬
+2. 诈唬时选择合理的加注尺度，不要过度暴露
+3. 如果手牌有不错的价值，优先按正常策略打
+4. 根据你的个性特点（${personality.description}）调整策略
+` : `
+你是一个${personality.name}玩家，不会进行诈唬。请根据手牌做出正统决策：
+1. 强牌积极加注获取价值
+2. 中等牌根据赔率决定跟注或弃牌
+3. 弱牌果断弃牌，不要勉强
+`}
+
+请返回JSON格式：
 {
   "action": "FOLD|CHECK|CALL|RAISE|ALL_IN",
-  "reason": "详细的中文分析理由",
-  "amount": "加注的金额"
+  "reason": "详细的中文分析理由${personality.canBluff ? '（如果选择诈唬请说明策略）' : ''}",
+  "amount": "如果选择RAISE，填写加注金额"
 }
 `;
-
 
     try {
       const res = await fetch('/api/ai', {
@@ -104,7 +130,7 @@ export async function makeAIDecision(
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt,
           gameId,
           gameState
@@ -135,9 +161,13 @@ export async function makeAIDecision(
       console.log('Failed to parse OpenAI response, using fallback AI');
       const fallbackDecision = makeAIDecisionFallback(aiPlayer, gameState, {
         level: AILevel.MEDIUM,
+        type: 'BALANCED' as any,
+        name: '平衡型',
+        description: '各方面均衡',
         bluffFrequency: 0.3,
         riskTolerance: 0.5,
-        aggressiveness: 0.5
+        aggressiveness: 0.5,
+        canBluff: true,
       });
       return { ...fallbackDecision, reason: '使用备用AI系统做出决策' };
     }
@@ -146,13 +176,17 @@ export async function makeAIDecision(
     // Fallback to traditional AI
     const fallbackDecision = makeAIDecisionFallback(aiPlayer, gameState, {
       level: AILevel.MEDIUM,
+      type: 'BALANCED' as any,
+      name: '平衡型',
+      description: '各方面均衡',
       bluffFrequency: 0.3,
       riskTolerance: 0.5,
-      aggressiveness: 0.5
+      aggressiveness: 0.5,
+      canBluff: true,
     });
     return {
       ...fallbackDecision,
       reason: '由于OpenAI服务异常，使用备用AI系统做出决策'
     };
   }
-} 
+}

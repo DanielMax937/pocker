@@ -23,40 +23,101 @@ export enum AILevel {
   HARD = 'HARD',
 }
 
+// AI personality types
+export enum AIPersonalityType {
+  TIGHT_AGGRESSIVE = 'TIGHT_AGGRESSIVE',   // 紧凶型 - 只玩好牌，但一旦玩就激进
+  LOOSE_AGGRESSIVE = 'LOOSE_AGGRESSIVE',   // 松凶型 - 玩很多牌，且激进
+  TIGHT_PASSIVE = 'TIGHT_PASSIVE',         // 紧弱型 - 只玩好牌，但不太加注
+  LOOSE_PASSIVE = 'LOOSE_PASSIVE',         // 松弱型 - 玩很多牌，但不太加注
+  BALANCED = 'BALANCED',                   // 平衡型 - 各方面均衡
+}
+
 // AI personality traits
 export interface AIPersonality {
   level: AILevel;
+  type: AIPersonalityType;
+  name: string;           // 个性名称
+  description: string;    // 个性描述
   bluffFrequency: number; // 0-1, how often the AI will bluff
-  riskTolerance: number; // 0-1, how risky the AI plays
+  riskTolerance: number;  // 0-1, how risky the AI plays
   aggressiveness: number; // 0-1, how aggressively the AI bets/raises
+  canBluff: boolean;      // 是否会唬人
 }
 
-// Create AI personalities
+// Create AI personalities with random type
 export const createAIPersonality = (level: AILevel): AIPersonality => {
-  switch (level) {
-    case AILevel.EASY:
+  // Randomly select a personality type
+  const types = Object.values(AIPersonalityType);
+  const randomType = types[Math.floor(Math.random() * types.length)];
+
+  const basePersonality = getPersonalityByType(randomType);
+
+  // Adjust based on difficulty level
+  const levelMultiplier = level === AILevel.EASY ? 0.7 :
+    level === AILevel.MEDIUM ? 1.0 : 1.3;
+
+  return {
+    level,
+    type: randomType,
+    name: basePersonality.name,
+    description: basePersonality.description,
+    bluffFrequency: Math.min(1, basePersonality.bluffFrequency * levelMultiplier),
+    riskTolerance: Math.min(1, basePersonality.riskTolerance * levelMultiplier),
+    aggressiveness: Math.min(1, basePersonality.aggressiveness * levelMultiplier),
+    canBluff: basePersonality.canBluff,
+  };
+};
+
+// Get personality traits by type
+function getPersonalityByType(type: AIPersonalityType): Omit<AIPersonality, 'level' | 'type'> {
+  switch (type) {
+    case AIPersonalityType.TIGHT_AGGRESSIVE:
       return {
-        level,
-        bluffFrequency: 0.1,
+        name: '紧凶型',
+        description: '只玩优质起手牌，但一旦入池就会激进下注和加注',
+        bluffFrequency: 0.2,
+        riskTolerance: 0.6,
+        aggressiveness: 0.8,
+        canBluff: true,
+      };
+    case AIPersonalityType.LOOSE_AGGRESSIVE:
+      return {
+        name: '松凶型',
+        description: '玩很多不同类型的手牌，喜欢激进下注和加注，善于利用位置优势',
+        bluffFrequency: 0.6,
+        riskTolerance: 0.8,
+        aggressiveness: 0.9,
+        canBluff: true,
+      };
+    case AIPersonalityType.TIGHT_PASSIVE:
+      return {
+        name: '紧弱型',
+        description: '只玩优质起手牌，但不太主动加注，倾向于跟注和过牌',
+        bluffFrequency: 0.05,
         riskTolerance: 0.3,
         aggressiveness: 0.2,
+        canBluff: false,
       };
-    case AILevel.MEDIUM:
+    case AIPersonalityType.LOOSE_PASSIVE:
       return {
-        level,
-        bluffFrequency: 0.3,
+        name: '松弱型',
+        description: '玩很多手牌，但很少主动加注，喜欢跟注看翻牌',
+        bluffFrequency: 0.1,
+        riskTolerance: 0.4,
+        aggressiveness: 0.3,
+        canBluff: false,
+      };
+    case AIPersonalityType.BALANCED:
+      return {
+        name: '平衡型',
+        description: '各方面均衡，会根据情况调整策略，偶尔会进行诈唬',
+        bluffFrequency: 0.35,
         riskTolerance: 0.5,
         aggressiveness: 0.5,
-      };
-    case AILevel.HARD:
-      return {
-        level,
-        bluffFrequency: 0.5,
-        riskTolerance: 0.7,
-        aggressiveness: 0.8,
+        canBluff: true,
       };
   }
-};
+}
 
 // Main AI decision function
 export const makeAIDecision = (
